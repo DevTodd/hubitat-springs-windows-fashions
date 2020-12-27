@@ -19,45 +19,36 @@
  *      -   Fingerprinting
  *      -   Added capability for SetPosition and SetLevel to be used for controlling position of the blinds
  *
+ *  2020-12-26: Cleanup / Initial Home Scene Controls
+ *      -   Added the ability to set a home position to be called via Hubitat.  There's no known parameters to save this setting on the device.
+ *      -   Removed unnecessary code
+ *      -   Made debugging more descriptive
+ *
  *      Todo: Clean up unnecessary code, add additional parameters, add info logging
  *
  */
 metadata {
     definition (name: "Springs Window Fashions Shade", namespace: "DevTodd", author: "DevTodd") {
-        capability "Window Shade"
+        capability "WindowShade"
         capability "Battery"
         capability "Refresh"
-        capability "Health Check"
+        capability "HealthCheck"
         capability "Actuator"
         capability "Sensor"
 
         command "stop"
+        command "home"
 
         capability "Switch Level"
 
-        fingerprint inClusters:"0x5E,0x26,0x85,0x59,0x72,0x86,0x5A,0x73,0x7A,0x6C,0x55,0x80", manufacturer: "GRABER", model: "RSZ1", deviceJoinName: "Springs Window Fashions Roller Shade"
-    }
-
-    simulator {
-        status "open":  "command: 2603, payload: FF"
-        status "closed": "command: 2603, payload: 00"
-        status "10%": "command: 2603, payload: 0A"
-        status "66%": "command: 2603, payload: 42"
-        status "99%": "command: 2603, payload: 63"
-        status "battery 100%": "command: 8003, payload: 64"
-        status "battery low": "command: 8003, payload: FF"
-
-        // reply messages
-        reply "2001FF,delay 1000,2602": "command: 2603, payload: 10 FF FE"
-        reply "200100,delay 1000,2602": "command: 2603, payload: 60 00 FE"
-        reply "200142,delay 1000,2602": "command: 2603, payload: 10 42 FE"
-        reply "200163,delay 1000,2602": "command: 2603, payload: 10 63 FE"
+        fingerprint inClusters:"0x5E,0x26,0x85,0x59,0x72,0x86,0x5A,0x73,0x7A,0x6C,0x55,0x80", mfr: "026E", deviceId: "5A31", prod: "5253", deviceJoinName: "Springs Window Fashions - Blinds"
     }
 
     preferences {
         configParams.each { input it.value.input }
         input name: "logEnable", type: "bool", title: "Enable debug logging", defaultValue: true
         input name: "infoEnable", type: "bool", title: "Info logging", defaultValue: true
+        input name: "homePosition", type: "number", title: "Set Home Position", description: "Set the position that you want the blinds to be set to when calling for the home position.  This doesn't save to the device and is only available to Hubitat or SmartHome Commands", defaultValue: 0
     }
 }
 
@@ -188,19 +179,19 @@ def zwaveEvent(hubitat.zwave.Command cmd) {
 }
 
 def open() {
-    if (logEnable) log.debug "open()"
+    if (logEnable) log.debug "Opening the Blinds"
     def level = switchDirection ? 0 : 99
     zwave.basicV1.basicSet(value: level).format()
 }
 
 def close() {
-    if (logEnable) log.debug "close()"
+    if (logEnable) log.debug "Closing the Blinds"
     def level = switchDirection ? 99 : 0
     zwave.basicV1.basicSet(value: level).format()
 }
 
 def setLevel(value, duration = null) {
-    if (logEnable) log.debug "setLevel(${value.inspect()})"
+    if (logEnable) log.debug "Setting the level of the blinds to (${value.inspect()})"
     Integer level = value as Integer
     level = switchDirection ? 99-level : level
     if (level < 0) level = 0
@@ -209,7 +200,7 @@ def setLevel(value, duration = null) {
 }
 
 def setPosition(value, duration = null) {
-    if (logEnable) log.debug "setPosition(${value.inspect()})"
+    if (logEnable) log.debug "Setting the position of the blinds to (${value.inspect()})"
     Integer level = value as Integer
     level = switchDirection ? 99-level : level
     if (level < 0) level = 0
@@ -222,8 +213,14 @@ def presetPosition() {
 }
 
 def stop() {
-    if (logEnable) log.debug "stop()"
+    if (logEnable) log.debug "Stop Command Issued"
     zwave.switchMultilevelV3.switchMultilevelStopLevelChange().format()
+}
+
+def home() {
+    if (logEnable) log.debug "Setting the blinds to home position - Level $homePosition"
+    def level = switchDirection ? 0 : homePosition
+    zwave.basicV1.basicSet(value: level).format()
 }
 
 def ping() {
@@ -231,7 +228,7 @@ def ping() {
 }
 
 def refresh() {
-    if (logEnable) log.debug "refresh()"
+    if (logEnable) log.debug "Refreshing Blind Status"
     delayBetween([
             zwave.switchMultilevelV1.switchMultilevelGet().format(),
             zwave.batteryV1.batteryGet().format()
