@@ -38,8 +38,10 @@ metadata {
 
         command "stop"
         command "home"
+        command "stopPositionChange"
+        command "startPositionChange"
 
-        capability "Switch Level"
+        capability "SwitchLevel"
 
         fingerprint inClusters:"0x5E,0x26,0x85,0x59,0x72,0x86,0x5A,0x73,0x7A,0x6C,0x55,0x80", mfr: "026E", deviceId: "5A31", prod: "5253", deviceJoinName: "Springs Window Fashions - Blinds"
     }
@@ -215,6 +217,14 @@ def presetPosition() {
 def stop() {
     if (logEnable) log.debug "Stop Command Issued"
     zwave.switchMultilevelV3.switchMultilevelStopLevelChange().format()
+}
+
+def stopPositionChange() {
+    stop()
+}
+
+def startPositionChange(direction) {
+    direction == open ? open() : close()
 }
 
 def home() {
