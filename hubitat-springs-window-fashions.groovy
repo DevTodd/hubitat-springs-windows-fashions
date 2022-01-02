@@ -38,8 +38,6 @@ metadata {
 
         command "stop"
         command "home"
-        command "stopPositionChange"
-        command "startPositionChange"
 
         capability "SwitchLevel"
 
